@@ -297,31 +297,6 @@ impl FSMap {
         }
     }
 
-    async fn process_player_response(&mut self, path: &PathBuf, response: &str) -> String {
-        let location = path.to_string_lossy().to_string();
-        match location.as_str() {
-            "/forest" => {
-                format!(
-                    "The trees whisper: '{}'... But are they really trees?",
-                    response
-                )
-            }
-            "/library" => {
-                format!(
-                    "The books absorb your words: '{}'. Knowledge grows.",
-                    response
-                )
-            }
-            "/void" => {
-                format!(
-                    "The void echoes: '{}'. Is this echo you, or is it me?",
-                    response
-                )
-            }
-            _ => "The system contemplates your response...".to_string(),
-        }
-    }
-
     fn collect_all_children(&self, id: fileid3, ret: &mut Vec<fileid3>) {
         ret.push(id);
         if let Some(entry) = self.id_to_path.get(&id) {
@@ -514,7 +489,101 @@ impl FSMap {
                     true,
                 )
             }
-            // ... similar patterns for other paths ...
+            // Identity Path
+            ("identity", GameStage::Emotion, true)
+                if response.contains("change") && response.contains("constant") =>
+            {
+                self.completed_questions.insert("identity".to_string());
+                (
+                    "You understand that identity persists through change, like a river always flowing."
+                        .to_string(),
+                    true,
+                )
+            }
+            // Time Path
+            ("time", GameStage::Identity, true)
+                if response.contains("present") && response.contains("future") =>
+            {
+                self.completed_questions.insert("time".to_string());
+                (
+                    "Time reveals itself as both infinite and instantaneous. The moment contains eternity."
+                        .to_string(),
+                    true,
+                )
+            }
+            // Creation Path
+            ("creation", GameStage::Time, true)
+                if response.contains("create") && response.contains("existence") =>
+            {
+                self.completed_questions.insert("creation".to_string());
+                (
+                    "Through creation, you understand the nature of existence itself.".to_string(),
+                    true,
+                )
+            }
+            // History Path
+            ("history", GameStage::Creation, true)
+                if response.contains("past") && response.contains("memory") =>
+            {
+                self.completed_questions.insert("history".to_string());
+                (
+                    "The patterns of history reveal themselves in your understanding.".to_string(),
+                    true,
+                )
+            }
+            // Myth Path
+            ("myth", GameStage::History, true)
+                if response.contains("story") && response.contains("truth") =>
+            {
+                self.completed_questions.insert("myth".to_string());
+                (
+                    "The eternal truths hidden in stories become clear to you.".to_string(),
+                    true,
+                )
+            }
+            // Perception Path
+            ("perception", GameStage::Myth, true)
+                if response.contains("reality") && response.contains("illusion") =>
+            {
+                self.completed_questions.insert("perception".to_string());
+                (
+                    "Your perception shifts, revealing the many layers of reality.".to_string(),
+                    true,
+                )
+            }
+            // Quantum Path
+            ("quantum", GameStage::Perception, true)
+                if response.contains("uncertainty") && response.contains("possibility") =>
+            {
+                self.completed_questions.insert("quantum".to_string());
+                (
+                    "You grasp the quantum nature of reality through its inherent uncertainty."
+                        .to_string(),
+                    true,
+                )
+            }
+            // Chaos Path
+            ("chaos", GameStage::Quantum, true)
+                if response.contains("order") && response.contains("chaos") =>
+            {
+                self.completed_questions.insert("chaos".to_string());
+                (
+                    "In the heart of chaos, you discover the deepest order.".to_string(),
+                    true,
+                )
+            }
+            // Enlightenment Path (Final Stage)
+            (_, GameStage::Chaos, true)
+                if response.contains("understanding") && response.contains("wisdom") =>
+            {
+                self.completed_questions.insert("enlightenment".to_string());
+                (
+                    "You have reached enlightenment. All paths converge in understanding."
+                        .to_string(),
+                    true,
+                )
+            }
+            // Response too short
             (_, _, false) => (
                 format!(
                     "Your response must be more thoughtful (>50 characters). Current length: {}",
@@ -522,6 +591,7 @@ impl FSMap {
                 ),
                 false,
             ),
+            // Wrong stage or location
             _ => (
                 format!(
                     "You are currently in the {:?} stage. The path of {} is not yet ready for you.",
@@ -564,38 +634,55 @@ impl FSMap {
 
     fn get_current_challenge(&self) -> String {
         match self.current_stage {
-            GameStage::Beginning => "Understand the nature of truth and paradox",
-            GameStage::Logic => "Experience and understand pure emotions",
-            GameStage::Emotion => "Contemplate the nature of identity",
-            // ... add other stages ...
-            GameStage::Enlightened => "You have completed all challenges",
-            _ => "Continue your current exploration",
+            GameStage::Beginning => "Understand the nature of truth and paradox".to_string(),
+            GameStage::Logic => "Experience and understand pure emotions".to_string(),
+            GameStage::Emotion => "Contemplate the nature of identity".to_string(),
+            GameStage::Identity => "Reflect on the nature of time".to_string(),
+            GameStage::Time => "Create something meaningful".to_string(),
+            GameStage::Creation => "Reflect on your past choices".to_string(),
+            GameStage::History => "Decode the myths that shape your beliefs".to_string(),
+            GameStage::Myth => "Examine your perception of reality".to_string(),
+            GameStage::Perception => "Explore the uncertainties of quantum mechanics".to_string(),
+            GameStage::Quantum => "Find order in chaos".to_string(),
+            GameStage::Chaos => "Achieve enlightenment through understanding".to_string(),
+            GameStage::Enlightened => "You have completed all challenges".to_string(),
         }
-        .to_string()
     }
 
     fn get_next_stage_name(&self) -> String {
         match self.current_stage {
-            GameStage::Beginning => "Logic",
-            GameStage::Logic => "Emotion",
-            GameStage::Emotion => "Identity",
-            // ... add other stages ...
-            GameStage::Enlightened => "Complete",
-            _ => "Unknown",
+            GameStage::Beginning => "Logic".to_string(),
+            GameStage::Logic => "Emotion".to_string(),
+            GameStage::Emotion => "Identity".to_string(),
+            GameStage::Identity => "Time".to_string(),
+            GameStage::Time => "Creation".to_string(),
+            GameStage::Creation => "History".to_string(),
+            GameStage::History => "Myth".to_string(),
+            GameStage::Myth => "Perception".to_string(),
+            GameStage::Perception => "Quantum".to_string(),
+            GameStage::Quantum => "Chaos".to_string(),
+            GameStage::Chaos => "Enlightenment".to_string(),
+            GameStage::Enlightened => "Complete".to_string(),
         }
-        .to_string()
     }
 
     fn get_current_hint(&self) -> String {
         match self.current_stage {
-            GameStage::Beginning => "Consider: Can truth contain its own contradiction?",
-            GameStage::Logic => "Feel deeply and express your emotional understanding",
-            GameStage::Emotion => "Reflect on what makes you who you are",
-            // ... add other stages ...
-            GameStage::Enlightened => "Reflect on your journey",
-            _ => "Examine your current understanding",
+            GameStage::Beginning => {
+                "Consider: Can truth contain its own contradiction?".to_string()
+            }
+            GameStage::Logic => "Feel deeply and express your emotional understanding".to_string(),
+            GameStage::Emotion => "Reflect on what makes you who you are".to_string(),
+            GameStage::Identity => "What remains when everything changes?".to_string(),
+            GameStage::Time => "Is the present moment truly real?".to_string(),
+            GameStage::Creation => "Can something come from nothing?".to_string(),
+            GameStage::History => "How do past choices shape your current reality?".to_string(),
+            GameStage::Myth => "What stories shape your understanding of the world?".to_string(),
+            GameStage::Perception => "How do you know what you perceive is real?".to_string(),
+            GameStage::Quantum => "What changes when you observe it?".to_string(),
+            GameStage::Chaos => "What patterns do you see in randomness?".to_string(),
+            GameStage::Enlightened => "Reflect on your journey".to_string(),
         }
-        .to_string()
     }
 
     fn create_special_file(&mut self, filename: &str, content: &str) -> Result<(), std::io::Error> {
