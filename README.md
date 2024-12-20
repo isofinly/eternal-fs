@@ -41,6 +41,12 @@ Welcome to "Eternal Filesystem," a mind-blowing game that blends the technical i
 
    - Explore special files like `quantum_state.txt`, `perception.txt`, and `timeline.txt` to gain deeper insights into the game's themes.
 
+5. **Multiplayer Mode:**
+
+   - **Join Forces:** Team up with friends to tackle philosophical challenges together!
+   - **Philosophical Debates:** Engage in friendly debates over the nature of existence. Just remember, no one likes a "know-it-all" in the realm of philosophy!
+   - **Shared Discoveries:** Explore the filesystem as a group, sharing insights and responses to unlock new paths and challenges.
+
 ## Acknowledgments
 
 This project utilizes the nfsserve library by xetdata, available at [https://github.com/xetdata/nfsserve](https://github.com/xetdata/nfsserve). We are grateful for the foundational work and support provided by the author, which made this philosophical NFS adventure possible.
@@ -52,17 +58,13 @@ This project utilizes the nfsserve library by xetdata, available at [https://git
   - Introduce elements where the filesystem changes unpredictably, reflecting the chaos of existence.
   - Implement a feature where the game could delete itself based on certain player actions, symbolizing the impermanence of reality.
 
-- **Multiplayer Support:**
-
-  - Allow multiple players to interact within the same filesystem, each representing different philosophical perspectives.
-  - Foster collaborative philosophical discourse and shared explorations.
-
 - **Random Events:**
 
   - Incorporate random events that challenge the player's assumptions and force them to adapt their understanding.
   - Add dynamic challenges that change the game's landscape and require creative problem-solving.
 
 - **Advanced Philosophical Themes:**
+
   - Explore additional philosophical concepts like ethics, aesthetics, and metaphysics.
   - Introduce new directories and challenges that delve deeper into the nature of existence and knowledge.
 
@@ -72,4 +74,4 @@ This project utilizes the nfsserve library by xetdata, available at [https://git
 
 ---
 
-For more detailed instructions and guidance, refer to the [GUIDE.md](GUIDE.md) file. Happy exploring!
+For more detailed instructions and guidance, refer to the [GUIDE.md](GUIDE.md) file. Happy exploring! And remember, in the world of philosophy, the only bad question is the one you don't ask—so don't be shy to "file" your inquiries!
