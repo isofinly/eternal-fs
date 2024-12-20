@@ -15,6 +15,12 @@ Welcome to "Eternal Filesystem," a mind-blowing game that blends the technical i
    To begin your journey, you need to mount the filesystem. Use the following commands:
 
    ```bash
+   cargo run --example eternal_fs --features demo -- ./eternal_root
+   ```
+
+   In another terminal:
+
+   ```bash
    mkdir eternal_mount
    sudo mount -t nfs -o nolocks,vers=3,tcp,port=11111,mountport=11111,soft 127.0.0.1:/ eternal_mount
    cd eternal_mount
