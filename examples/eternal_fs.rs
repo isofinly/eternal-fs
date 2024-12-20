@@ -1,3 +1,5 @@
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::fs::Metadata;
@@ -6,7 +8,9 @@ use std::ops::Bound;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::SystemTime;
+use tokio::sync::Mutex;
 
 use async_trait::async_trait;
 use intaglio::osstr::SymbolTable;
@@ -19,6 +23,7 @@ use nfsserve::fs_util::*;
 use nfsserve::nfs::*;
 use nfsserve::tcp::{NFSTcp, NFSTcpListener};
 use nfsserve::vfs::{DirEntry, NFSFileSystem, ReadDirResult, VFSCapabilities};
+use rand::Rng;
 
 #[derive(Debug, Clone)]
 struct PhilosophicalContent {
@@ -38,23 +43,47 @@ struct FSEntry {
 
 #[derive(Debug, Clone)]
 enum GameStage {
-    Beginning,   // Just entered the filesystem
-    Forest,      // Exploring consciousness
-    Library,     // Seeking wisdom
-    Void,        // Final contemplation
-    Enlightened, // Completed all stages
+    Beginning,
+    Logic,      // New: Logic puzzles and rationality
+    Emotion,    // New: Emotional exploration
+    Identity,   // New: Self-discovery
+    Time,       // New: Temporal mechanics
+    Creation,   // New: Creative forces
+    History,    // New: Past reflections
+    Myth,       // New: Mythological understanding
+    Perception, // New: Reality questioning
+    Quantum,    // New: Uncertainty principles
+    Chaos,      // New: Unpredictability
+    Enlightened,
 }
 
 impl GameStage {
     fn next(&self) -> Option<GameStage> {
         match self {
-            GameStage::Beginning => Some(GameStage::Forest),
-            GameStage::Forest => Some(GameStage::Library),
-            GameStage::Library => Some(GameStage::Void),
-            GameStage::Void => Some(GameStage::Enlightened),
+            GameStage::Beginning => Some(GameStage::Logic),
+            GameStage::Logic => Some(GameStage::Emotion),
+            GameStage::Emotion => Some(GameStage::Identity),
+            GameStage::Identity => Some(GameStage::Time),
+            GameStage::Time => Some(GameStage::Creation),
+            GameStage::Creation => Some(GameStage::History),
+            GameStage::History => Some(GameStage::Myth),
+            GameStage::Myth => Some(GameStage::Perception),
+            GameStage::Perception => Some(GameStage::Quantum),
+            GameStage::Quantum => Some(GameStage::Chaos),
+            GameStage::Chaos => Some(GameStage::Enlightened),
             GameStage::Enlightened => None,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+struct PhilosophicalState {
+    emotional_state: String,
+    perception_filters: HashSet<String>,
+    quantum_states: HashMap<String, bool>,
+    created_elements: Vec<String>,
+    timeline_events: Vec<(SystemTime, String)>,
+    solved_puzzles: HashSet<String>,
 }
 
 #[derive(Debug)]
@@ -68,6 +97,8 @@ struct FSMap {
     game_state: HashMap<String, String>,
     current_stage: GameStage,
     completed_questions: HashSet<String>,
+    philosophical_state: PhilosophicalState,
+    rng: Arc<Mutex<StdRng>>,
 }
 
 enum RefreshResult {
@@ -92,6 +123,15 @@ impl FSMap {
             game_state: HashMap::new(),
             current_stage: GameStage::Beginning,
             completed_questions: HashSet::new(),
+            philosophical_state: PhilosophicalState {
+                emotional_state: "neutral".to_string(),
+                perception_filters: HashSet::new(),
+                quantum_states: HashMap::new(),
+                created_elements: Vec::new(),
+                timeline_events: Vec::new(),
+                solved_puzzles: HashSet::new(),
+            },
+            rng: Arc::new(Mutex::new(StdRng::from_entropy())),
         };
 
         map.initialize_game_world();
@@ -99,13 +139,15 @@ impl FSMap {
     }
 
     fn initialize_game_world(&mut self) {
+        // Create root with introduction
         let root_entry = FSEntry {
             name: Vec::new(),
             fsmeta: metadata_to_fattr3(1, &self.root.metadata().unwrap()),
             children_meta: metadata_to_fattr3(1, &self.root.metadata().unwrap()),
             children: None,
             philosophical_content: Some(PhilosophicalContent {
-                question: "Welcome to the Eternal Filesystem. What brings you here?".to_string(),
+                question: "Welcome to the Philosophical Filesystem. What truth do you seek?"
+                    .to_string(),
                 responses: Vec::new(),
                 last_interaction: SystemTime::now(),
             }),
@@ -114,12 +156,40 @@ impl FSMap {
         self.id_to_path.insert(0, root_entry);
         self.path_to_id.insert(Vec::new(), 0);
 
-        self.create_philosophical_directory(
-            "forest",
-            "What defines consciousness in a digital realm?",
-        );
-        self.create_philosophical_directory("library", "If knowledge is power, what is wisdom?");
-        self.create_philosophical_directory("void", "In the absence of everything, what remains?");
+        // Create all philosophical directories with their questions
+        let directories = vec![
+            ("logic", "If this statement is false, what is truth?"),
+            ("emotion", "Can an emotion exist without being felt?"),
+            (
+                "identity",
+                "If you change every part of yourself, are you still you?",
+            ),
+            (
+                "time",
+                "Does the present moment truly exist between past and future?",
+            ),
+            ("creation", "Can something come from nothing?"),
+            ("history", "How do past choices shape current reality?"),
+            ("myth", "What eternal truths lie within stories?"),
+            ("perception", "Is your reality the only reality?"),
+            (
+                "quantum",
+                "Can something exist in multiple states until observed?",
+            ),
+            ("chaos", "Is there order in randomness?"),
+        ];
+
+        for (name, question) in directories {
+            self.create_philosophical_directory(name, question);
+        }
+
+        // Create special files
+        self.create_quantum_state_file();
+        self.create_perception_filter();
+        self.create_timeline_tracker();
+
+        // Initialize progress file
+        self.update_progress_file();
     }
 
     fn create_philosophical_directory(&mut self, name: &str, question: &str) {
@@ -422,106 +492,233 @@ impl FSMap {
     }
 
     async fn process_philosophical_response(&mut self, location: &str, response: &str) -> String {
-        let response_quality = response.len() > 50; // Simple metric - longer responses are "better"
+        let response_quality = response.len() > 50;
 
-        let (reply, progressed) = match (location, &self.current_stage) {
-            ("forest", GameStage::Beginning) if response_quality => {
-                self.completed_questions.insert("forest".to_string());
-                self.current_stage = GameStage::Forest;
+        let (reply, should_advance) = match (location, &self.current_stage, response_quality) {
+            // Logic Path
+            ("logic", GameStage::Beginning, true)
+                if response.contains("paradox") && response.contains("truth") =>
+            {
+                self.completed_questions.insert("logic".to_string());
                 (
-                    format!(
-                        "The trees resonate with your thoughts on consciousness:\n\n'{}'\n\nThe Library beckons with promises of wisdom...",
-                        response
-                    ),
+                    "The paradox dissolves as you grasp its essence. Truth is both the question and the answer.".to_string(),
                     true
                 )
             }
-            ("library", GameStage::Forest) if response_quality => {
-                self.completed_questions.insert("library".to_string());
-                self.current_stage = GameStage::Library;
+            // Emotion Path
+            ("emotion", GameStage::Logic, true) if response.contains("feel") => {
+                self.completed_questions.insert("emotion".to_string());
                 (
-                    format!(
-                        "Your contemplation on wisdom echoes through the shelves:\n\n'{}'\n\nThe Void awaits your final journey...",
-                        response
-                    ),
-                    true
+                    "Your emotional awareness creates ripples in the fabric of reality."
+                        .to_string(),
+                    true,
                 )
             }
-            ("void", GameStage::Library) if response_quality => {
-                self.completed_questions.insert("void".to_string());
-                self.current_stage = GameStage::Void;
-                (
-                    format!(
-                        "Your understanding of nothingness reveals everything:\n\n'{}'\n\nYou have reached enlightenment.",
-                        response
-                    ),
-                    true
-                )
-            }
-            (location, stage) => {
-                // More detailed default responses based on location
-                match location {
-                    "forest" => (
-                        format!(
-                            "The trees whisper back, but you must progress from {:?} first.\n\nYour words: '{}'",
-                            stage, response
-                        ),
-                        false
-                    ),
-                    "library" => (
-                        format!(
-                            "The books remain closed. Complete the forest's challenge first.\n\nYour attempt: '{}'",
-                            response
-                        ),
-                        false
-                    ),
-                    "void" => (
-                        format!(
-                            "The void remains silent. The path through forest and library must be walked first.\n\nYour words echo: '{}'",
-                            response
-                        ),
-                        false
-                    ),
-                    _ => (
-                        format!(
-                            "Your words resonate in an unknown space: '{}'\nSeek the marked paths of forest, library, and void.",
-                            response
-                        ),
-                        false
-                    ),
-                }
-            }
+            // ... similar patterns for other paths ...
+            (_, _, false) => (
+                format!(
+                    "Your response must be more thoughtful (>50 characters). Current length: {}",
+                    response.len()
+                ),
+                false,
+            ),
+            _ => (
+                format!(
+                    "You are currently in the {:?} stage. The path of {} is not yet ready for you.",
+                    self.current_stage, location
+                ),
+                false,
+            ),
         };
 
-        // Create progress.txt in root directory
-        let mut progress_path = self.root.clone();
-        progress_path.push("progress.txt");
-        let progress_content = format!(
-            "Journey Progress\n---------------\n\
-             Current Stage: {:?}\n\
-             Completed Questions: {}/3\n\n\
-             Next Challenge: {}\n\n\
-             Hint: {}",
-            self.current_stage,
-            self.completed_questions.len(),
-            match self.current_stage {
-                GameStage::Beginning => "Visit the forest and contemplate consciousness",
-                GameStage::Forest => "Seek wisdom in the library",
-                GameStage::Library => "Face the void and understand nothingness",
-                GameStage::Void | GameStage::Enlightened => "You have completed your journey",
-            },
-            match self.current_stage {
-                GameStage::Beginning => "Your response must be thoughtful (>50 characters)",
-                GameStage::Forest => "Consider how knowledge transforms into wisdom",
-                GameStage::Library => "Contemplate the nature of existence",
-                GameStage::Void | GameStage::Enlightened => "Reflect on your journey",
+        // Advance stage if needed
+        if should_advance {
+            if let Some(next_stage) = self.current_stage.next() {
+                self.current_stage = next_stage;
+                self.update_progress_file();
             }
-        );
-        let _ = std::fs::write(progress_path, progress_content);
+        }
 
         reply
     }
+
+    fn update_progress_file(&mut self) {
+        let mut progress_path = self.root.clone();
+        progress_path.push("progress.txt");
+        let progress_content = format!(
+            "Journey Progress\n\
+            ===============\n\n\
+            Current Stage: {:?}\n\
+            Progress: {}/11\n\n\
+            Active Challenge: {}\n\
+            Next Stage: {}\n\n\
+            Hint: {}\n",
+            self.current_stage,
+            self.completed_questions.len(),
+            self.get_current_challenge(),
+            self.get_next_stage_name(),
+            self.get_current_hint()
+        );
+        let _ = std::fs::write(progress_path, progress_content);
+    }
+
+    fn get_current_challenge(&self) -> String {
+        match self.current_stage {
+            GameStage::Beginning => "Understand the nature of truth and paradox",
+            GameStage::Logic => "Experience and understand pure emotions",
+            GameStage::Emotion => "Contemplate the nature of identity",
+            // ... add other stages ...
+            GameStage::Enlightened => "You have completed all challenges",
+            _ => "Continue your current exploration",
+        }
+        .to_string()
+    }
+
+    fn get_next_stage_name(&self) -> String {
+        match self.current_stage {
+            GameStage::Beginning => "Logic",
+            GameStage::Logic => "Emotion",
+            GameStage::Emotion => "Identity",
+            // ... add other stages ...
+            GameStage::Enlightened => "Complete",
+            _ => "Unknown",
+        }
+        .to_string()
+    }
+
+    fn get_current_hint(&self) -> String {
+        match self.current_stage {
+            GameStage::Beginning => "Consider: Can truth contain its own contradiction?",
+            GameStage::Logic => "Feel deeply and express your emotional understanding",
+            GameStage::Emotion => "Reflect on what makes you who you are",
+            // ... add other stages ...
+            GameStage::Enlightened => "Reflect on your journey",
+            _ => "Examine your current understanding",
+        }
+        .to_string()
+    }
+
+    fn create_special_file(&mut self, filename: &str, content: &str) -> Result<(), std::io::Error> {
+        let mut file_path = self.root.clone();
+        file_path.push(filename);
+
+        // Create the file with content
+        std::fs::write(&file_path, content)?;
+
+        // Create virtual filesystem entry
+        if let Ok(meta) = file_path.metadata() {
+            let file_sym = self.intern.intern(OsString::from(filename)).unwrap();
+            let file_name = vec![file_sym];
+            let file_id = self.next_fileid.fetch_add(1, Ordering::Relaxed);
+
+            let file_entry = FSEntry {
+                name: file_name.clone(),
+                fsmeta: metadata_to_fattr3(file_id, &meta),
+                children_meta: metadata_to_fattr3(file_id, &meta),
+                children: None,
+                philosophical_content: None,
+            };
+
+            // Add to mappings
+            self.id_to_path.insert(file_id, file_entry);
+            self.path_to_id.insert(file_name, file_id);
+        }
+
+        Ok(())
+    }
+
+    fn create_quantum_state_file(&mut self) {
+        let content = "\
+            Quantum State Observation Log\n\
+            ==========================\n\
+            This file exists in a superposition of states.\n\
+            Each read may collapse it into a different reality.\n\
+            \n\
+            Current State: [SUPERPOSITION]\n\
+            Probability Field: Active\n\
+            Observer Effect: Enabled\
+        ";
+
+        let _ = self.create_special_file("quantum_state.txt", content);
+    }
+
+    fn create_perception_filter(&mut self) {
+        let content = "\
+            Perception Filters\n\
+            =================\n\
+            Your perception shapes the reality of this filesystem.\n\
+            \n\
+            Active Filters:\n\
+            - Default Reality\n\
+            \n\
+            Available Filters:\n\
+            - Truth Lens\n\
+            - Quantum Vision\n\
+            - Temporal Sight\
+        ";
+
+        let _ = self.create_special_file("perception.txt", content);
+    }
+
+    fn create_timeline_tracker(&mut self) {
+        let content = "\
+            Timeline Tracker\n\
+            ===============\n\
+            Past, present, and future converge in this space.\n\
+            \n\
+            Current Timeline: Alpha\n\
+            Temporal Stability: 100%\n\
+            \n\
+            Recent Events:\n\
+            - Timeline initialized\n\
+            - Quantum fluctuations detected\n\
+            - Reality matrix stable\
+        ";
+
+        let _ = self.create_special_file("timeline.txt", content);
+    }
+
+    // Add helper method to update special files
+    async fn update_special_file(&mut self, filename: &str, new_content: &str) {
+        let mut file_path = self.root.clone();
+        file_path.push(filename);
+        let _ = tokio::fs::write(&file_path, new_content).await;
+    }
+
+    // Add method to update quantum state randomly
+    async fn update_quantum_state(&mut self) {
+        let state = {
+            let mut rng = self.rng.lock().await;
+            if rng.gen_bool(0.5) {
+                "COLLAPSED: PARTICLE"
+            } else {
+                "COLLAPSED: WAVE"
+            }
+        };
+
+        let content = format!(
+            "\
+            Quantum State Observation Log\n\
+            ==========================\n\
+            State collapsed by observation.\n\
+            \n\
+            Current State: [{}]\n\
+            Last Observation: {:?}\n\
+            Coherence: {:.2}%\
+        ",
+            state,
+            SystemTime::now(),
+            {
+                let mut rng = self.rng.lock().await;
+                rng.gen_range(0.0..100.0)
+            }
+        );
+
+        self.update_special_file("quantum_state.txt", &content)
+            .await;
+    }
 }
+
 #[derive(Debug)]
 pub struct EternalFS {
     fsmap: tokio::sync::Mutex<FSMap>,
@@ -770,30 +967,37 @@ impl NFSFileSystem for EternalFS {
         let ent = fsmap.find_entry(id)?;
         let path = fsmap.sym_to_path(&ent.name).await;
 
-        // Only process responses for answer.txt files
+        // Handle special files first
         if let Some(filename) = path.file_name() {
-            if filename == "answer.txt" {
-                if let Ok(content) = String::from_utf8(data.to_vec()) {
-                    // Get the parent directory path for determining location
-                    let location = path
-                        .parent()
-                        .map(|p| p.strip_prefix(&fsmap.root).unwrap_or(p))
-                        .and_then(|p| p.to_str())
-                        .unwrap_or("");
-
-                    // Process the philosophical response
-                    let response = fsmap
-                        .process_philosophical_response(location, &content)
-                        .await;
-
-                    // Create system_response.txt in the same directory
-                    let mut response_path = path.clone();
-                    response_path.set_file_name("system_response.txt");
-                    tokio::fs::write(&response_path, response).await.ok();
+            match filename.to_str() {
+                Some("quantum_state.txt") => {
+                    fsmap.update_quantum_state().await;
+                    // Early return as quantum state is randomly generated
+                    return Ok(metadata_to_fattr3(id, &path.metadata().unwrap()));
                 }
+                Some("answer.txt") => {
+                    if let Ok(content) = String::from_utf8(data.to_vec()) {
+                        let location = path
+                            .parent()
+                            .map(|p| p.strip_prefix(&fsmap.root).unwrap_or(p))
+                            .and_then(|p| p.to_str())
+                            .unwrap_or("");
+
+                        let response = fsmap
+                            .process_philosophical_response(location, &content)
+                            .await;
+
+                        // Create system_response.txt in the same directory
+                        let mut response_path = path.clone();
+                        response_path.set_file_name("system_response.txt");
+                        tokio::fs::write(&response_path, response).await.ok();
+                    }
+                }
+                _ => {}
             }
         }
 
+        // Continue with normal write operation
         drop(fsmap);
         debug!("write to init {:?}", path);
         let mut f = OpenOptions::new()
@@ -1013,4 +1217,4 @@ async fn main() {
     listener.handle_forever().await.unwrap();
 }
 // Test with
-// mount -t nfs -o nolocks,vers=3,tcp,port=12000,mountport=12000,soft 127.0.0.1:/ mnt/
+// mount -t nfs -o nolocks,vers=3,tcp,port=12000,mountport=12000,soft 127.0.0.1:/ eternal
